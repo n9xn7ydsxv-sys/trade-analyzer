@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dynasty Trade Analyzer</title>
+  <style>
+    /* === RESET & BASE === */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0f0c29, #1a1a2e, #16213e);
+      color: #e0e0e0;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    /* === LAYOUT === */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      background: linear-gradient(135deg, #e94560, #ff6b8a);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .gear-btn {
+      background: none;
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #8888aa;
+      font-size: 1.3rem;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .gear-btn:hover { color: #e0e0e0; border-color: rgba(255,255,255,0.2); }
+
+    /* === SETTINGS OVERLAY === */
+    .settings-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      backdrop-filter: blur(4px);
+    }
+    .settings-overlay.hidden { display: none; }
+
+    .settings-panel {
+      background: rgba(22, 33, 62, 0.95);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 32px;
+      width: 90%;
+      max-width: 420px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+
+    .settings-panel h2 {
+      font-size: 1.3rem;
+      margin-bottom: 24px;
+      color: #e0e0e0;
+    }
+
+    .setting-group {
+      margin-bottom: 20px;
+    }
+
+    .setting-group label {
+      display: block;
+      font-size: 0.85rem;
+      color: #8888aa;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .setting-group select,
+    .setting-group .radio-group {
+      width: 100%;
+    }
+
+    .setting-group select {
+      padding: 10px 14px;
+      background: rgba(15, 12, 41, 0.6);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      color: #e0e0e0;
+      font-size: 0.95rem;
+      outline: none;
+      cursor: pointer;
+    }
+    .setting-group select:focus { border-color: #e94560; }
+
+    .radio-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .radio-group button {
+      flex: 1;
+      padding: 10px;
+      background: rgba(15, 12, 41, 0.6);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      color: #8888aa;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .radio-group button.active {
+      border-color: #e94560;
+      color: #e0e0e0;
+      background: rgba(233, 69, 96, 0.15);
+    }
+
+    .save-settings-btn {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #e94560, #d63551);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 4px 12px rgba(233, 69, 96, 0.3);
+    }
+    .save-settings-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(233, 69, 96, 0.4);
+    }
+
+    /* === TRADE AREA === */
+    .trade-area {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .side {
+      background: rgba(22, 33, 62, 0.5);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 14px;
+      padding: 20px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+
+    .side-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .side-header h3 {
+      font-size: 1rem;
+      color: #aaa;
+    }
+
+    .asset-count {
+      font-size: 0.75rem;
+      color: #556;
+    }
+
+    /* === SEARCH === */
+    .search-container {
+      position: relative;
+      margin-bottom: 12px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 11px 14px;
+      background: rgba(15, 12, 41, 0.5);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      color: #e0e0e0;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .search-input:focus {
+      border-color: #e94560;
+      box-shadow: 0 0 12px rgba(233, 69, 96, 0.1);
+    }
+    .search-input::placeholder { color: #445; }
+
+    .search-results {
+      position: absolute;
+      top: 100%;
+      left: 0; right: 0;
+      background: rgba(18, 25, 50, 0.98);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      margin-top: 4px;
+      max-height: 280px;
+      overflow-y: auto;
+      z-index: 50;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      display: none;
+    }
+    .search-results.visible { display: block; }
+
+    .search-result-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: background 0.15s;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .search-result-item:last-child { border-bottom: none; }
+    .search-result-item:hover { background: rgba(233, 69, 96, 0.1); }
+    .search-result-item.disabled {
+      opacity: 0.35;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .pos-tag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      min-width: 32px;
+      text-align: center;
+    }
+    .pos-QB { background: rgba(233, 69, 96, 0.25); color: #ff6b8a; }
+    .pos-RB { background: rgba(80, 200, 120, 0.25); color: #50c878; }
+    .pos-WR { background: rgba(70, 130, 255, 0.25); color: #4682ff; }
+    .pos-TE { background: rgba(255, 165, 0, 0.25); color: #ffa500; }
+    .pos-PICK { background: rgba(180, 130, 255, 0.25); color: #b482ff; }
+
+    .result-name { flex: 1; font-size: 0.85rem; }
+    .result-team { font-size: 0.75rem; color: #556; margin-right: 4px; }
+    .result-value { font-size: 0.8rem; color: #8888aa; font-weight: 600; }
+
+    /* === ASSET CARDS === */
+    .asset-list {
+      min-height: 40px;
+    }
+
+    .asset-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: rgba(15, 12, 41, 0.4);
+      border: 1px solid rgba(255,255,255,0.04);
+      border-radius: 10px;
+      margin-bottom: 8px;
+      transition: transform 0.15s;
+    }
+    .asset-card:hover { transform: translateX(2px); }
+
+    .asset-name { flex: 1; font-size: 0.85rem; }
+    .asset-value { font-size: 0.8rem; color: #8888aa; font-weight: 600; }
+
+    .remove-btn {
+      background: none;
+      border: none;
+      color: #444;
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 6px;
+      transition: color 0.2s;
+    }
+    .remove-btn:hover { color: #e94560; }
+
+    .side-totals {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      font-size: 0.8rem;
+    }
+
+    .side-totals .raw-total { color: #556; }
+    .side-totals .adj-line { color: #e94560; font-size: 0.75rem; }
+    .side-totals .adj-total { color: #e0e0e0; font-weight: 700; font-size: 0.95rem; margin-top: 4px; }
+
+    /* === CONTROLS === */
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .control-btn {
+      padding: 8px 20px;
+      background: rgba(15, 12, 41, 0.5);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      color: #8888aa;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .control-btn:hover {
+      border-color: rgba(255,255,255,0.15);
+      color: #e0e0e0;
+    }
+
+    /* === RESULTS === */
+    .results-panel {
+      background: rgba(22, 33, 62, 0.5);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 14px;
+      padding: 24px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      text-align: center;
+    }
+
+    .results-prompt {
+      color: #445;
+      font-size: 0.9rem;
+      padding: 20px 0;
+    }
+
+    .results-verdict {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .fairness-label {
+      display: inline-block;
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+    .fairness-fair { background: rgba(80,200,120,0.2); color: #50c878; }
+    .fairness-slight { background: rgba(255,200,50,0.2); color: #ffc832; }
+    .fairness-clear { background: rgba(255,140,50,0.2); color: #ff8c32; }
+    .fairness-lopsided { background: rgba(233,69,96,0.2); color: #e94560; }
+
+    .results-suggestion {
+      font-size: 0.85rem;
+      color: #8888aa;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .results-suggestion strong { color: #e0e0e0; }
+
+    /* === LOADING === */
+    .loading-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 12, 41, 0.95);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 200;
+    }
+    .loading-overlay.hidden { display: none; }
+
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: #e94560;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-text { color: #8888aa; font-size: 0.9rem; }
+
+    /* === FOOTER === */
+    .footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 0.75rem;
+      color: #334;
+    }
+
+    .settings-badges {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .settings-badge {
+      font-size: 0.7rem;
+      padding: 3px 10px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.05);
+      color: #667;
+    }
+
+    /* === MOBILE === */
+    @media (max-width: 640px) {
+      body { padding: 12px; }
+      h1 { font-size: 1.3rem; }
+      .trade-area {
+        grid-template-columns: 1fr;
+      }
+      .side { padding: 16px; }
+      .results-panel { padding: 20px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text">Loading player values...</div>
+  </div>
+
+  <!-- Settings Overlay -->
+  <div class="settings-overlay hidden" id="settingsOverlay">
+    <div class="settings-panel">
+      <h2>League Settings</h2>
+
+      <div class="setting-group">
+        <label>Number of Starters</label>
+        <select id="settingStarters">
+          <option value="8">8 starters</option>
+          <option value="9">9 starters</option>
+          <option value="10" selected>10 starters</option>
+          <option value="11">11 starters</option>
+          <option value="12">12 starters</option>
+        </select>
+      </div>
+
+      <div class="setting-group">
+        <label>Scoring Format</label>
+        <div class="radio-group" id="settingPPR">
+          <button data-value="0">Standard</button>
+          <button data-value="0.5">Half PPR</button>
+          <button data-value="1" class="active">PPR</button>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <label>QB Format</label>
+        <div class="radio-group" id="settingQB">
+          <button data-value="1" class="active">1QB</button>
+          <button data-value="2">Superflex</button>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <label>TE Premium (TEP)</label>
+        <div class="radio-group" id="settingTEP">
+          <button data-value="0" class="active">None</button>
+          <button data-value="0.5">0.5 TEP</button>
+          <button data-value="1">1.0 TEP</button>
+        </div>
+      </div>
+
+      <button class="save-settings-btn" onclick="saveSettings()">Save Settings</button>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div class="container" id="mainApp" style="display:none;">
+    <header>
+      <h1>Dynasty Trade Analyzer</h1>
+      <button class="gear-btn" onclick="showSettings()">&#9881; Settings</button>
+    </header>
+
+    <!-- Settings badges -->
+    <div class="settings-badges" id="settingsBadges"></div>
+
+    <!-- Trade Columns -->
+    <div class="trade-area">
+      <!-- Side A -->
+      <div class="side">
+        <div class="side-header">
+          <h3>Side A</h3>
+          <span class="asset-count" id="countA"></span>
+        </div>
+        <div class="search-container">
+          <input type="text" class="search-input" id="searchA" placeholder="Search players or picks..." autocomplete="off" />
+          <div class="search-results" id="resultsA"></div>
+        </div>
+        <div class="asset-list" id="assetsA"></div>
+        <div class="side-totals" id="totalsA" style="display:none;">
+          <div class="raw-total"></div>
+          <div class="adj-line"></div>
+          <div class="adj-total"></div>
+        </div>
+      </div>
+
+      <!-- Side B -->
+      <div class="side">
+        <div class="side-header">
+          <h3>Side B</h3>
+          <span class="asset-count" id="countB"></span>
+        </div>
+        <div class="search-container">
+          <input type="text" class="search-input" id="searchB" placeholder="Search players or picks..." autocomplete="off" />
+          <div class="search-results" id="resultsB"></div>
+        </div>
+        <div class="asset-list" id="assetsB"></div>
+        <div class="side-totals" id="totalsB" style="display:none;">
+          <div class="raw-total"></div>
+          <div class="adj-line"></div>
+          <div class="adj-total"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <button class="control-btn" onclick="swapSides()">&#8644; Swap</button>
+      <button class="control-btn" onclick="clearTrade()">&#10005; Clear</button>
+    </div>
+
+    <!-- Results -->
+    <div class="results-panel" id="resultsPanel">
+      <div class="results-prompt" id="resultsPrompt">Add assets to both sides to analyze a trade</div>
+      <div id="resultsContent" style="display:none;"></div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer" id="footer"></div>
+  </div>
+
+  <script>
+    // ============================================================
+    // STATE
+    // ============================================================
+    let allAssets = [];       // All searchable assets (players + picks)
+    let sideA = [];           // Assets added to Side A
+    let sideB = [];           // Assets added to Side B
+    let dataTimestamp = null;  // When values were last fetched
+    let settings = {
+      starters: 10,
+      ppr: 1,
+      numQbs: 1,
+      tep: 0
+    };
+
+    // ============================================================
+    // SETTINGS
+    // ============================================================
+    function loadSettings() {
+      const saved = localStorage.getItem('tradeAnalyzerSettings');
+      if (saved) {
+        settings = JSON.parse(saved);
+        return true;
+      }
+      return false;
+    }
+
+    function saveSettings() {
+      // Read values from the settings panel
+      settings.starters = parseInt(document.getElementById('settingStarters').value);
+      settings.ppr = parseFloat(document.querySelector('#settingPPR .active').dataset.value);
+      settings.numQbs = parseInt(document.querySelector('#settingQB .active').dataset.value);
+      settings.tep = parseFloat(document.querySelector('#settingTEP .active').dataset.value);
+
+      localStorage.setItem('tradeAnalyzerSettings', JSON.stringify(settings));
+      hideSettings();
+      renderSettingsBadges();
+      fetchAndLoad();
+    }
+
+    function showSettings() {
+      // Sync UI with current settings
+      document.getElementById('settingStarters').value = settings.starters;
+      syncRadioGroup('settingPPR', settings.ppr);
+      syncRadioGroup('settingQB', settings.numQbs);
+      syncRadioGroup('settingTEP', settings.tep);
+      document.getElementById('settingsOverlay').classList.remove('hidden');
+    }
+
+    function hideSettings() {
+      document.getElementById('settingsOverlay').classList.add('hidden');
+    }
+
+    function syncRadioGroup(groupId, value) {
+      const buttons = document.querySelectorAll(`#${groupId} button`);
+      buttons.forEach(btn => {
+        btn.classList.toggle('active', parseFloat(btn.dataset.value) === value);
+      });
+    }
+
+    function renderSettingsBadges() {
+      const pprLabel = settings.ppr === 1 ? 'PPR' : settings.ppr === 0.5 ? 'Half PPR' : 'Standard';
+      const qbLabel = settings.numQbs === 2 ? 'Superflex' : '1QB';
+      const tepLabel = settings.tep === 0 ? 'No TEP' : `${settings.tep} TEP`;
+      document.getElementById('settingsBadges').innerHTML =
+        `<span class="settings-badge">12 Team</span>` +
+        `<span class="settings-badge">${settings.starters} Starters</span>` +
+        `<span class="settings-badge">${pprLabel}</span>` +
+        `<span class="settings-badge">${qbLabel}</span>` +
+        `<span class="settings-badge">${tepLabel}</span>`;
+    }
+
+    // ============================================================
+    // API & DATA
+    // ============================================================
+    async function fetchAndLoad() {
+      document.getElementById('loadingOverlay').classList.remove('hidden');
+      document.getElementById('mainApp').style.display = 'none';
+
+      try {
+        const url = `https://api.fantasycalc.com/values/current?isDynasty=true&numQbs=${settings.numQbs}&numTeams=12&ppr=${settings.ppr}`;
+        const response = await fetch(url);
+
+        if (!response.ok) throw new Error(`API returned ${response.status}`);
+
+        const data = await response.json();
+        dataTimestamp = new Date();
+
+        // Cache the response
+        localStorage.setItem('tradeAnalyzerCache', JSON.stringify({
+          data: data,
+          timestamp: dataTimestamp.toISOString(),
+          numQbs: settings.numQbs,
+          ppr: settings.ppr
+        }));
+
+        processData(data);
+      } catch (err) {
+        console.error('API fetch failed, trying cache:', err);
+        const cached = localStorage.getItem('tradeAnalyzerCache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          dataTimestamp = new Date(parsed.timestamp);
+          processData(parsed.data);
+        } else {
+          alert('Failed to load player values. Please check your internet connection and refresh.');
+          return;
+        }
+      }
+
+      // Refresh trade assets with new values
+      refreshTradeAssets();
+      renderTrade();
+
+      document.getElementById('loadingOverlay').classList.add('hidden');
+      document.getElementById('mainApp').style.display = 'block';
+      updateFooter();
+    }
+
+    function processData(data) {
+      allAssets = [];
+      const currentPickYear = getCurrentPickYear();
+      const pickYears = [currentPickYear, currentPickYear + 1, currentPickYear + 2];
+
+      // Separate players and picks
+      const players = [];
+      const picks = [];
+
+      for (const entry of data) {
+        if (entry.player.position === 'PICK') {
+          picks.push(entry);
+        } else {
+          players.push(entry);
+        }
+      }
+
+      // Process players
+      for (const entry of players) {
+        let value = entry.value;
+
+        // Apply TE discount for non-TEP and partial TEP leagues
+        // FantasyCalc values already have TEP baked in from their user base,
+        // so we discount TEs in non/partial TEP leagues rather than boosting in full TEP
+        if (entry.player.position === 'TE') {
+          if (settings.tep === 0) {
+            value = Math.round(value * 0.85);   // 15% discount for non-TEP
+          } else if (settings.tep === 0.5) {
+            value = Math.round(value * 0.925);  // 7.5% discount for 0.5 TEP
+          }
+          // TEP 1.0: no adjustment (baseline already reflects ~TEP value)
+        }
+
+        allAssets.push({
+          id: `player-${entry.player.id}`,
+          name: entry.player.name,
+          position: entry.player.position,
+          team: entry.player.maybeTeam || '',
+          value: value,
+          overallRank: entry.overallRank,
+          searchText: normalize(entry.player.name)
+        });
+      }
+
+      // Process picks
+      const currentYearThirdRound = {}; // Group 3.xx picks for early/mid/late
+
+      for (const entry of picks) {
+        const name = entry.player.name;
+        const value = entry.value;
+        const rank = entry.overallRank;
+
+        // Match individual picks: "2026 Pick 1.01"
+        const indivMatch = name.match(/^(\d{4})\s+Pick\s+(\d+)\.(\d+)$/);
+        // Match round-level picks: "2026 1st", "2027 2nd"
+        const roundMatch = name.match(/^(\d{4})\s+(\d+)(st|nd|rd|th)$/);
+
+        if (indivMatch) {
+          const year = parseInt(indivMatch[1]);
+          const round = parseInt(indivMatch[2]);
+          const slot = parseInt(indivMatch[3]);
+
+          if (year !== currentPickYear) continue; // Only process current year individual picks
+
+          if (round <= 2) {
+            // Rounds 1-2: individual picks
+            const pickName = `${year} ${round}.${String(slot).padStart(2, '0')}`;
+            allAssets.push({
+              id: `pick-${pickName}`,
+              name: pickName,
+              position: 'PICK',
+              team: '',
+              value: value,
+              overallRank: rank,
+              searchText: normalize(pickName + ' pick')
+            });
+          } else if (round === 3) {
+            // Round 3: collect for grouping
+            if (!currentYearThirdRound[slot]) currentYearThirdRound[slot] = { value: 0, rank: 0 };
+            currentYearThirdRound[slot] = { value, rank };
+          }
+          // Round 4+: skip
+
+        } else if (roundMatch) {
+          const year = parseInt(roundMatch[1]);
+          const roundNum = parseInt(roundMatch[2]);
+
+          if (!pickYears.includes(year)) continue;
+          if (roundNum > 3) continue; // Skip 4th round
+
+          if (year === currentPickYear) {
+            // Skip generic current year rounds (we use individual picks)
+            continue;
+          }
+
+          // Future years: split into early/mid/late
+          const roundLabel = roundNum === 1 ? '1st' : roundNum === 2 ? '2nd' : '3rd';
+
+          const earlyName = `${year} Early ${roundLabel}`;
+          const midName = `${year} Mid ${roundLabel}`;
+          const lateName = `${year} Late ${roundLabel}`;
+
+          allAssets.push({
+            id: `pick-${earlyName}`,
+            name: earlyName,
+            position: 'PICK',
+            team: '',
+            value: Math.round(value * 1.15),
+            overallRank: rank,
+            searchText: normalize(earlyName + ' pick')
+          });
+          allAssets.push({
+            id: `pick-${midName}`,
+            name: midName,
+            position: 'PICK',
+            team: '',
+            value: value,
+            overallRank: rank,
+            searchText: normalize(midName + ' pick')
+          });
+          allAssets.push({
+            id: `pick-${lateName}`,
+            name: lateName,
+            position: 'PICK',
+            team: '',
+            value: Math.round(value * 0.85),
+            overallRank: rank,
+            searchText: normalize(lateName + ' pick')
+          });
+        }
+      }
+
+      // Process current year 3rd round early/mid/late
+      const thirdSlots = Object.keys(currentYearThirdRound).map(Number).sort((a, b) => a - b);
+      if (thirdSlots.length > 0) {
+        const earlySlots = thirdSlots.filter(s => s <= 4);
+        const midSlots = thirdSlots.filter(s => s >= 5 && s <= 8);
+        const lateSlots = thirdSlots.filter(s => s >= 9);
+
+        const avg = (slots) => {
+          if (slots.length === 0) return 0;
+          return Math.round(slots.reduce((sum, s) => sum + currentYearThirdRound[s].value, 0) / slots.length);
+        };
+        const avgRank = (slots) => {
+          if (slots.length === 0) return 999;
+          return Math.round(slots.reduce((sum, s) => sum + currentYearThirdRound[s].rank, 0) / slots.length);
+        };
+
+        const year = currentPickYear;
+        if (earlySlots.length > 0) {
+          allAssets.push({
+            id: `pick-${year} Early 3rd`,
+            name: `${year} Early 3rd`,
+            position: 'PICK', team: '',
+            value: avg(earlySlots),
+            overallRank: avgRank(earlySlots),
+            searchText: normalize(`${year} early 3rd pick`)
+          });
+        }
+        if (midSlots.length > 0) {
+          allAssets.push({
+            id: `pick-${year} Mid 3rd`,
+            name: `${year} Mid 3rd`,
+            position: 'PICK', team: '',
+            value: avg(midSlots),
+            overallRank: avgRank(midSlots),
+            searchText: normalize(`${year} mid 3rd pick`)
+          });
+        }
+        if (lateSlots.length > 0) {
+          allAssets.push({
+            id: `pick-${year} Late 3rd`,
+            name: `${year} Late 3rd`,
+            position: 'PICK', team: '',
+            value: avg(lateSlots),
+            overallRank: avgRank(lateSlots),
+            searchText: normalize(`${year} late 3rd pick`)
+          });
+        }
+      }
+
+      // Sort all assets by value descending (for search ordering)
+      allAssets.sort((a, b) => b.value - a.value);
+    }
+
+    function getCurrentPickYear() {
+      const now = new Date();
+      // September (month 8) or later: draft already happened, current year is next year
+      return now.getMonth() >= 8 ? now.getFullYear() + 1 : now.getFullYear();
+    }
+
+    function refreshTradeAssets() {
+      // Update sideA/sideB assets with fresh values from allAssets
+      sideA = sideA.map(asset => allAssets.find(a => a.id === asset.id) || asset);
+      sideB = sideB.map(asset => allAssets.find(a => a.id === asset.id) || asset);
+    }
+
+    // ============================================================
+    // SEARCH
+    // ============================================================
+    function normalize(str) {
+      return str.toLowerCase().replace(/['''.-]/g, '').replace(/\s+/g, ' ').trim();
+    }
+
+    function searchAssets(query) {
+      if (!query || query.length < 2) return [];
+
+      const normalizedQuery = normalize(query);
+      const usedIds = new Set([...sideA, ...sideB].map(a => a.id));
+
+      const results = [];
+      for (const asset of allAssets) {
+        if (asset.searchText.includes(normalizedQuery)) {
+          results.push({
+            ...asset,
+            inTrade: usedIds.has(asset.id)
+          });
+          if (results.length >= 8) break;
+        }
+      }
+
+      return results;
+    }
+
+    function showSearchResults(side, query) {
+      const resultsEl = document.getElementById(`results${side}`);
+      const results = searchAssets(query);
+
+      if (results.length === 0) {
+        resultsEl.classList.remove('visible');
+        return;
+      }
+
+      resultsEl.innerHTML = results.map(asset => `
+        <div class="search-result-item ${asset.inTrade ? 'disabled' : ''}"
+             onclick="${asset.inTrade ? '' : `addAsset('${side}', '${asset.id}')`}">
+          <span class="pos-tag pos-${asset.position}">${asset.position}</span>
+          <span class="result-name">${asset.name}</span>
+          ${asset.team ? `<span class="result-team">${asset.team}</span>` : ''}
+          <span class="result-value">${asset.value.toLocaleString()}</span>
+        </div>
+      `).join('');
+
+      resultsEl.classList.add('visible');
+    }
+
+    function hideSearchResults(side) {
+      document.getElementById(`results${side}`).classList.remove('visible');
+    }
+
+    // ============================================================
+    // TRADE MANAGEMENT
+    // ============================================================
+    function addAsset(side, assetId) {
+      const asset = allAssets.find(a => a.id === assetId);
+      if (!asset) return;
+
+      if (side === 'A') sideA.push(asset);
+      else sideB.push(asset);
+
+      // Clear search
+      document.getElementById(`search${side}`).value = '';
+      hideSearchResults(side);
+      renderTrade();
+    }
+
+    function removeAsset(side, index) {
+      if (side === 'A') sideA.splice(index, 1);
+      else sideB.splice(index, 1);
+      renderTrade();
+    }
+
+    function swapSides() {
+      const temp = sideA;
+      sideA = sideB;
+      sideB = temp;
+      renderTrade();
+    }
+
+    function clearTrade() {
+      sideA = [];
+      sideB = [];
+      document.getElementById('searchA').value = '';
+      document.getElementById('searchB').value = '';
+      renderTrade();
+    }
+
+    // ============================================================
+    // TRADE CALCULATION
+    // ============================================================
+    function getConsolidationRate() {
+      const S = 12 * settings.starters;
+      return 0.45 * Math.exp(-0.03 * (S - 80)) + 0.14;
+    }
+
+    function getEliteMultiplier(overallRank) {
+      if (overallRank <= 10) return 1.25;
+      if (overallRank <= 25) return 1.10;
+      if (overallRank <= 50) return 1.00;
+      return 0.90;
+    }
+
+    function calculateTrade() {
+      if (sideA.length === 0 || sideB.length === 0) return null;
+
+      // Sort both sides by value descending
+      const sortedA = [...sideA].sort((a, b) => b.value - a.value);
+      const sortedB = [...sideB].sort((a, b) => b.value - a.value);
+
+      const baseRate = getConsolidationRate();
+
+      // Determine effective rate (with elite multiplier)
+      let effectiveRate = baseRate;
+      let eliteMultiplierActive = false;
+      let eliteMultiplierValue = 1.0;
+      if (sortedA.length !== sortedB.length) {
+        const fewerSide = sortedA.length < sortedB.length ? sortedA : sortedB;
+        if (fewerSide.length > 0) {
+          eliteMultiplierValue = getEliteMultiplier(fewerSide[0].overallRank);
+          if (eliteMultiplierValue !== 1.0) {
+            eliteMultiplierActive = true;
+          }
+          effectiveRate = baseRate * eliteMultiplierValue;
+          // Cap the effective rate at 95% to prevent extreme values
+          effectiveRate = Math.min(effectiveRate, 0.95);
+        }
+      }
+
+      // Apply compounding discount to both sides
+      const adjA = sortedA.map((asset, i) => ({
+        ...asset,
+        adjustedValue: Math.round(asset.value * Math.pow(1 - effectiveRate, i))
+      }));
+
+      const adjB = sortedB.map((asset, i) => ({
+        ...asset,
+        adjustedValue: Math.round(asset.value * Math.pow(1 - effectiveRate, i))
+      }));
+
+      const rawA = sortedA.reduce((sum, a) => sum + a.value, 0);
+      const rawB = sortedB.reduce((sum, a) => sum + a.value, 0);
+      const totalA = adjA.reduce((sum, a) => sum + a.adjustedValue, 0);
+      const totalB = adjB.reduce((sum, a) => sum + a.adjustedValue, 0);
+
+      const diff = Math.abs(totalA - totalB);
+      const avg = (totalA + totalB) / 2;
+      const diffPercent = avg > 0 ? (diff / avg) * 100 : 0;
+
+      let winner = null;
+      if (diffPercent > 5) {
+        winner = totalA > totalB ? 'A' : 'B';
+      }
+
+      // Fairness label
+      let fairnessLabel, fairnessClass;
+      if (diffPercent <= 5) {
+        fairnessLabel = 'Fair Trade';
+        fairnessClass = 'fairness-fair';
+      } else if (diffPercent <= 15) {
+        fairnessLabel = 'Slight Edge';
+        fairnessClass = 'fairness-slight';
+      } else if (diffPercent <= 25) {
+        fairnessLabel = 'Clear Advantage';
+        fairnessClass = 'fairness-clear';
+      } else {
+        fairnessLabel = 'Lopsided';
+        fairnessClass = 'fairness-lopsided';
+      }
+
+      // Consolidation adjustment amounts
+      const consAdjA = totalA - rawA;
+      const consAdjB = totalB - rawB;
+
+      return {
+        adjA, adjB,
+        rawA, rawB,
+        totalA, totalB,
+        diff, diffPercent,
+        winner,
+        fairnessLabel, fairnessClass,
+        consAdjA, consAdjB,
+        effectiveRate, baseRate,
+        eliteMultiplierActive, eliteMultiplierValue
+      };
+    }
+
+    function findBalancingAsset(gap) {
+      // Find the asset whose value is closest to the gap
+      let best = null;
+      let bestDiff = Infinity;
+
+      for (const asset of allAssets) {
+        // Skip assets already in the trade
+        const usedIds = new Set([...sideA, ...sideB].map(a => a.id));
+        if (usedIds.has(asset.id)) continue;
+
+        const d = Math.abs(asset.value - gap);
+        if (d < bestDiff) {
+          bestDiff = d;
+          best = asset;
+        }
+      }
+
+      // If the best match is more than 50% off the gap, it's too far apart
+      if (!best || bestDiff > gap * 0.5) return null;
+
+      return best;
+    }
+
+    // ============================================================
+    // RENDERING
+    // ============================================================
+    function renderTrade() {
+      renderSide('A', sideA);
+      renderSide('B', sideB);
+      renderResults();
+    }
+
+    function renderSide(side, assets) {
+      const listEl = document.getElementById(`assets${side}`);
+      const countEl = document.getElementById(`count${side}`);
+      const totalsEl = document.getElementById(`totals${side}`);
+
+      countEl.textContent = assets.length > 0 ? `(${assets.length} asset${assets.length !== 1 ? 's' : ''})` : '';
+
+      if (assets.length === 0) {
+        listEl.innerHTML = '';
+        totalsEl.style.display = 'none';
+        return;
+      }
+
+      listEl.innerHTML = assets.map((asset, i) => `
+        <div class="asset-card">
+          <span class="pos-tag pos-${asset.position}">${asset.position}</span>
+          <span class="asset-name">${asset.name}</span>
+          ${asset.team ? `<span class="result-team">${asset.team}</span>` : ''}
+          <span class="asset-value">${asset.value.toLocaleString()}</span>
+          <button class="remove-btn" onclick="removeAsset('${side}', ${i})">&times;</button>
+        </div>
+      `).join('');
+
+      // Show totals
+      const result = calculateTrade();
+      if (result) {
+        const raw = side === 'A' ? result.rawA : result.rawB;
+        const adj = side === 'A' ? result.consAdjA : result.consAdjB;
+        const total = side === 'A' ? result.totalA : result.totalB;
+
+        totalsEl.style.display = 'block';
+        totalsEl.querySelector('.raw-total').textContent = `Raw: ${raw.toLocaleString()}`;
+        totalsEl.querySelector('.adj-line').textContent = adj !== 0 ? `Consolidation: ${adj.toLocaleString()}` : '';
+        totalsEl.querySelector('.adj-total').textContent = `Adjusted: ${total.toLocaleString()}`;
+      } else {
+        totalsEl.style.display = assets.length > 0 ? 'block' : 'none';
+        if (assets.length > 0) {
+          const raw = assets.reduce((sum, a) => sum + a.value, 0);
+          totalsEl.querySelector('.raw-total').textContent = `Raw: ${raw.toLocaleString()}`;
+          totalsEl.querySelector('.adj-line').textContent = '';
+          totalsEl.querySelector('.adj-total').textContent = '';
+        }
+      }
+    }
+
+    function renderResults() {
+      const promptEl = document.getElementById('resultsPrompt');
+      const contentEl = document.getElementById('resultsContent');
+
+      if (sideA.length === 0 && sideB.length === 0) {
+        promptEl.textContent = 'Add assets to both sides to analyze a trade';
+        promptEl.style.display = 'block';
+        contentEl.style.display = 'none';
+        return;
+      }
+
+      if (sideA.length === 0 || sideB.length === 0) {
+        const emptySide = sideA.length === 0 ? 'A' : 'B';
+        promptEl.textContent = `Add assets to Side ${emptySide} to complete the trade`;
+        promptEl.style.display = 'block';
+        contentEl.style.display = 'none';
+        return;
+      }
+
+      const result = calculateTrade();
+      if (!result) return;
+
+      promptEl.style.display = 'none';
+      contentEl.style.display = 'block';
+
+      let verdictHtml;
+      if (result.winner) {
+        verdictHtml = `
+          <div class="results-verdict">Side ${result.winner} wins by ${result.diff.toLocaleString()} (${result.diffPercent.toFixed(1)}%)</div>
+          <span class="fairness-label ${result.fairnessClass}">${result.fairnessLabel}</span>
+        `;
+      } else {
+        verdictHtml = `
+          <div class="results-verdict">Even trade</div>
+          <span class="fairness-label ${result.fairnessClass}">${result.fairnessLabel}</span>
+        `;
+      }
+
+      // Rate info
+      let rateHtml = `
+        <div class="results-suggestion" style="margin-top:8px; border-top:none; padding-top:8px;">
+          Consolidation rate: ${(result.effectiveRate * 100).toFixed(1)}%
+          ${result.eliteMultiplierActive ? ` (base ${(result.baseRate * 100).toFixed(1)}% × ${result.eliteMultiplierValue}x elite multiplier)` : ''}
+        </div>
+      `;
+
+      // Balancing suggestion
+      let suggestionHtml = '';
+      if (result.winner && result.diffPercent > 5) {
+        const losingSide = result.winner === 'A' ? 'B' : 'A';
+        const balancer = findBalancingAsset(result.diff);
+
+        if (balancer) {
+          suggestionHtml = `
+            <div class="results-suggestion">
+              To make this fair, <strong>Side ${losingSide}</strong> should add <strong>${balancer.name}</strong> (${balancer.value.toLocaleString()})
+            </div>
+          `;
+        } else {
+          suggestionHtml = `
+            <div class="results-suggestion">This trade is too far apart to balance with a single asset</div>
+          `;
+        }
+      }
+
+      contentEl.innerHTML = verdictHtml + rateHtml + suggestionHtml;
+    }
+
+    function updateFooter() {
+      if (dataTimestamp) {
+        const timeStr = dataTimestamp.toLocaleString();
+        document.getElementById('footer').textContent = `Values as of ${timeStr}`;
+      }
+    }
+
+    // ============================================================
+    // EVENT HANDLERS
+    // ============================================================
+    function setupEventHandlers() {
+      // Search inputs
+      ['A', 'B'].forEach(side => {
+        const input = document.getElementById(`search${side}`);
+
+        input.addEventListener('input', () => {
+          showSearchResults(side, input.value);
+        });
+
+        input.addEventListener('focus', () => {
+          if (input.value.length >= 2) {
+            showSearchResults(side, input.value);
+          }
+        });
+
+        // Hide results when clicking outside
+        input.addEventListener('blur', () => {
+          // Small delay so click on result registers first
+          setTimeout(() => hideSearchResults(side), 200);
+        });
+      });
+
+      // Radio group buttons
+      document.querySelectorAll('.radio-group').forEach(group => {
+        group.querySelectorAll('button').forEach(btn => {
+          btn.addEventListener('click', () => {
+            group.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+          });
+        });
+      });
+    }
+
+    // ============================================================
+    // INITIALIZATION
+    // ============================================================
+    async function init() {
+      setupEventHandlers();
+
+      const hasSettings = loadSettings();
+
+      if (hasSettings) {
+        // Returning user — load data and show app
+        renderSettingsBadges();
+        await fetchAndLoad();
+      } else {
+        // First-time user — show settings panel
+        document.getElementById('loadingOverlay').classList.add('hidden');
+        showSettings();
+      }
+    }
+
+    // Start the app
+    init();
+  </script>
+</body>
+</html>
