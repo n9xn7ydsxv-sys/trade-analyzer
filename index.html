@@ -3,23 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dynasty Trade Analyzer</title>
+  <title>Bridge Calc</title>
   <style>
     /* === RESET & BASE === */
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #0f0c29, #1a1a2e, #16213e);
-      color: #e0e0e0;
+      background: #2B5EA7;
+      color: #2B5EA7;
       min-height: 100vh;
       padding: 20px;
+      position: relative;
+    }
+
+    .bridge-bg {
+      position: fixed;
+      bottom: 2%;
+      left: 0;
+      width: 100%;
+      z-index: 0;
+      pointer-events: none;
     }
 
     /* === LAYOUT === */
     .container {
       max-width: 900px;
       margin: 0 auto;
+      position: relative;
+      z-index: 1;
     }
 
     header {
@@ -31,28 +43,28 @@
 
     h1 {
       font-size: 1.6rem;
-      background: linear-gradient(135deg, #e94560, #ff6b8a);
+      background: linear-gradient(135deg, #FB4F14, #FF7A45);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
     .gear-btn {
       background: none;
-      border: 1px solid rgba(255,255,255,0.1);
-      color: #8888aa;
+      border: 1px solid rgba(255,255,255,0.25);
+      color: rgba(255,255,255,0.8);
       font-size: 1.3rem;
       cursor: pointer;
       padding: 6px 10px;
       border-radius: 8px;
       transition: all 0.2s;
     }
-    .gear-btn:hover { color: #e0e0e0; border-color: rgba(255,255,255,0.2); }
+    .gear-btn:hover { color: #FFF8F0; border-color: rgba(255,255,255,0.5); }
 
     /* === SETTINGS OVERLAY === */
     .settings-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.7);
+      background: rgba(0,0,0,0.5);
       display: flex;
       justify-content: center;
       align-items: center;
@@ -62,13 +74,13 @@
     .settings-overlay.hidden { display: none; }
 
     .settings-panel {
-      background: rgba(22, 33, 62, 0.95);
+      background: #1a3a5c;
       border: 1px solid rgba(255,255,255,0.08);
       border-radius: 16px;
       padding: 32px;
       width: 90%;
       max-width: 420px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
     }
 
     .settings-panel h2 {
@@ -84,7 +96,7 @@
     .setting-group label {
       display: block;
       font-size: 0.85rem;
-      color: #8888aa;
+      color: #8899bb;
       margin-bottom: 8px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -97,7 +109,7 @@
 
     .setting-group select {
       padding: 10px 14px;
-      background: rgba(15, 12, 41, 0.6);
+      background: rgba(0, 20, 40, 0.5);
       border: 1px solid rgba(255,255,255,0.1);
       border-radius: 8px;
       color: #e0e0e0;
@@ -105,7 +117,7 @@
       outline: none;
       cursor: pointer;
     }
-    .setting-group select:focus { border-color: #e94560; }
+    .setting-group select:focus { border-color: #FB4F14; }
 
     .radio-group {
       display: flex;
@@ -115,24 +127,24 @@
     .radio-group button {
       flex: 1;
       padding: 10px;
-      background: rgba(15, 12, 41, 0.6);
+      background: rgba(0, 20, 40, 0.5);
       border: 1px solid rgba(255,255,255,0.1);
       border-radius: 8px;
-      color: #8888aa;
+      color: #8899bb;
       font-size: 0.85rem;
       cursor: pointer;
       transition: all 0.2s;
     }
     .radio-group button.active {
-      border-color: #e94560;
+      border-color: #FB4F14;
       color: #e0e0e0;
-      background: rgba(233, 69, 96, 0.15);
+      background: rgba(251, 79, 20, 0.15);
     }
 
     .save-settings-btn {
       width: 100%;
       padding: 12px;
-      background: linear-gradient(135deg, #e94560, #d63551);
+      background: linear-gradient(135deg, #FB4F14, #D94410);
       color: white;
       border: none;
       border-radius: 10px;
@@ -141,11 +153,11 @@
       cursor: pointer;
       margin-top: 8px;
       transition: transform 0.15s, box-shadow 0.2s;
-      box-shadow: 0 4px 12px rgba(233, 69, 96, 0.3);
+      box-shadow: 0 4px 12px rgba(251, 79, 20, 0.3);
     }
     .save-settings-btn:hover {
       transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(233, 69, 96, 0.4);
+      box-shadow: 0 6px 20px rgba(251, 79, 20, 0.4);
     }
 
     /* === TRADE AREA === */
@@ -157,12 +169,11 @@
     }
 
     .side {
-      background: rgba(22, 33, 62, 0.5);
-      border: 1px solid rgba(255,255,255,0.05);
+      background: #FFF8F0;
+      border: 1px solid rgba(43, 94, 167, 0.1);
       border-radius: 14px;
       padding: 20px;
-      backdrop-filter: blur(8px);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      box-shadow: 0 2px 12px rgba(43, 94, 167, 0.08);
     }
 
     .side-header {
@@ -174,12 +185,13 @@
 
     .side-header h3 {
       font-size: 1rem;
-      color: #aaa;
+      color: #2B5EA7;
+      font-weight: 700;
     }
 
     .asset-count {
       font-size: 0.75rem;
-      color: #556;
+      color: #7A9AC4;
     }
 
     /* === SEARCH === */
@@ -191,32 +203,32 @@
     .search-input {
       width: 100%;
       padding: 11px 14px;
-      background: rgba(15, 12, 41, 0.5);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: #FFFFFF;
+      border: 1px solid rgba(43, 94, 167, 0.15);
       border-radius: 10px;
-      color: #e0e0e0;
+      color: #2B5EA7;
       font-size: 0.9rem;
       outline: none;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
     .search-input:focus {
-      border-color: #e94560;
-      box-shadow: 0 0 12px rgba(233, 69, 96, 0.1);
+      border-color: #FB4F14;
+      box-shadow: 0 0 12px rgba(251, 79, 20, 0.1);
     }
-    .search-input::placeholder { color: #445; }
+    .search-input::placeholder { color: #A0B4CC; }
 
     .search-results {
       position: absolute;
       top: 100%;
       left: 0; right: 0;
-      background: rgba(18, 25, 50, 0.98);
-      border: 1px solid rgba(255,255,255,0.1);
+      background: #FFFFFF;
+      border: 1px solid rgba(43, 94, 167, 0.15);
       border-radius: 10px;
       margin-top: 4px;
       max-height: 280px;
       overflow-y: auto;
       z-index: 50;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      box-shadow: 0 8px 24px rgba(43, 94, 167, 0.15);
       display: none;
     }
     .search-results.visible { display: block; }
@@ -228,10 +240,11 @@
       padding: 10px 14px;
       cursor: pointer;
       transition: background 0.15s;
-      border-bottom: 1px solid rgba(255,255,255,0.03);
+      border-bottom: 1px solid rgba(43, 94, 167, 0.06);
+      color: #2B5EA7;
     }
     .search-result-item:last-child { border-bottom: none; }
-    .search-result-item:hover { background: rgba(233, 69, 96, 0.1); }
+    .search-result-item:hover { background: rgba(251, 79, 20, 0.08); }
     .search-result-item.disabled {
       opacity: 0.35;
       cursor: default;
@@ -246,15 +259,15 @@
       min-width: 32px;
       text-align: center;
     }
-    .pos-QB { background: rgba(233, 69, 96, 0.25); color: #ff6b8a; }
-    .pos-RB { background: rgba(80, 200, 120, 0.25); color: #50c878; }
-    .pos-WR { background: rgba(70, 130, 255, 0.25); color: #4682ff; }
-    .pos-TE { background: rgba(255, 165, 0, 0.25); color: #ffa500; }
-    .pos-PICK { background: rgba(180, 130, 255, 0.25); color: #b482ff; }
+    .pos-QB { background: rgba(220, 50, 50, 0.12); color: #cc3333; }
+    .pos-RB { background: rgba(40, 160, 80, 0.12); color: #1e8a45; }
+    .pos-WR { background: rgba(43, 94, 167, 0.12); color: #2B5EA7; }
+    .pos-TE { background: rgba(251, 79, 20, 0.12); color: #d94410; }
+    .pos-PICK { background: rgba(120, 80, 200, 0.12); color: #6b40b8; }
 
     .result-name { flex: 1; font-size: 0.85rem; }
-    .result-team { font-size: 0.75rem; color: #556; margin-right: 4px; }
-    .result-value { font-size: 0.8rem; color: #8888aa; font-weight: 600; }
+    .result-team { font-size: 0.75rem; color: #7A9AC4; margin-right: 4px; }
+    .result-value { font-size: 0.8rem; color: #2B5EA7; font-weight: 600; }
 
     /* === ASSET CARDS === */
     .asset-list {
@@ -266,39 +279,40 @@
       align-items: center;
       gap: 10px;
       padding: 10px 12px;
-      background: rgba(15, 12, 41, 0.4);
-      border: 1px solid rgba(255,255,255,0.04);
+      background: #F5EDE3;
+      border: 1px solid rgba(43, 94, 167, 0.06);
       border-radius: 10px;
       margin-bottom: 8px;
       transition: transform 0.15s;
+      color: #2B5EA7;
     }
     .asset-card:hover { transform: translateX(2px); }
 
-    .asset-name { flex: 1; font-size: 0.85rem; }
-    .asset-value { font-size: 0.8rem; color: #8888aa; font-weight: 600; }
+    .asset-name { flex: 1; font-size: 0.85rem; color: #2B5EA7; }
+    .asset-value { font-size: 0.8rem; color: #2B5EA7; font-weight: 600; }
 
     .remove-btn {
       background: none;
       border: none;
-      color: #444;
+      color: #A0B4CC;
       font-size: 1.1rem;
       cursor: pointer;
       padding: 2px 6px;
       border-radius: 6px;
       transition: color 0.2s;
     }
-    .remove-btn:hover { color: #e94560; }
+    .remove-btn:hover { color: #FB4F14; }
 
     .side-totals {
       margin-top: 12px;
       padding-top: 12px;
-      border-top: 1px solid rgba(255,255,255,0.06);
+      border-top: 1px solid rgba(43, 94, 167, 0.1);
       font-size: 0.8rem;
     }
 
-    .side-totals .raw-total { color: #556; }
-    .side-totals .adj-line { color: #e94560; font-size: 0.75rem; }
-    .side-totals .adj-total { color: #e0e0e0; font-weight: 700; font-size: 0.95rem; margin-top: 4px; }
+    .side-totals .raw-total { color: #7A9AC4; }
+    .side-totals .adj-line { color: #FB4F14; font-size: 0.75rem; }
+    .side-totals .adj-total { color: #2B5EA7; font-weight: 700; font-size: 0.95rem; margin-top: 4px; }
 
     /* === CONTROLS === */
     .controls {
@@ -310,32 +324,32 @@
 
     .control-btn {
       padding: 8px 20px;
-      background: rgba(15, 12, 41, 0.5);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
       border-radius: 8px;
-      color: #8888aa;
+      color: rgba(255,255,255,0.8);
       font-size: 0.85rem;
       cursor: pointer;
       transition: all 0.2s;
     }
     .control-btn:hover {
-      border-color: rgba(255,255,255,0.15);
-      color: #e0e0e0;
+      border-color: #FB4F14;
+      color: #FFF8F0;
+      background: rgba(255,255,255,0.15);
     }
 
     /* === RESULTS === */
     .results-panel {
-      background: rgba(22, 33, 62, 0.5);
-      border: 1px solid rgba(255,255,255,0.05);
+      background: #FFF8F0;
+      border: 1px solid rgba(43, 94, 167, 0.1);
       border-radius: 14px;
       padding: 24px;
-      backdrop-filter: blur(8px);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      box-shadow: 0 2px 12px rgba(43, 94, 167, 0.08);
       text-align: center;
     }
 
     .results-prompt {
-      color: #445;
+      color: #7A9AC4;
       font-size: 0.9rem;
       padding: 20px 0;
     }
@@ -344,6 +358,7 @@
       font-size: 1.1rem;
       font-weight: 700;
       margin-bottom: 8px;
+      color: #2B5EA7;
     }
 
     .fairness-label {
@@ -354,25 +369,25 @@
       font-weight: 600;
       margin-bottom: 16px;
     }
-    .fairness-fair { background: rgba(80,200,120,0.2); color: #50c878; }
-    .fairness-slight { background: rgba(255,200,50,0.2); color: #ffc832; }
-    .fairness-clear { background: rgba(255,140,50,0.2); color: #ff8c32; }
-    .fairness-lopsided { background: rgba(233,69,96,0.2); color: #e94560; }
+    .fairness-fair { background: rgba(40,160,80,0.12); color: #1e8a45; }
+    .fairness-slight { background: rgba(200,160,30,0.15); color: #a08520; }
+    .fairness-clear { background: rgba(251,79,20,0.12); color: #d94410; }
+    .fairness-lopsided { background: rgba(200,30,30,0.12); color: #cc2222; }
 
     .results-suggestion {
-      font-size: 0.85rem;
-      color: #8888aa;
+      font-size: 1.05rem;
+      color: #2B5EA7;
       margin-top: 12px;
       padding-top: 12px;
-      border-top: 1px solid rgba(255,255,255,0.06);
+      border-top: 1px solid rgba(43, 94, 167, 0.08);
     }
-    .results-suggestion strong { color: #e0e0e0; }
+    .results-suggestion strong { color: #2B5EA7; }
 
     /* === LOADING === */
     .loading-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(15, 12, 41, 0.95);
+      background: rgba(43, 94, 167, 0.95);
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -383,22 +398,22 @@
 
     .spinner {
       width: 36px; height: 36px;
-      border: 3px solid rgba(255,255,255,0.1);
-      border-top-color: #e94560;
+      border: 3px solid rgba(255,255,255,0.15);
+      border-top-color: #FB4F14;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
       margin-bottom: 16px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .loading-text { color: #8888aa; font-size: 0.9rem; }
+    .loading-text { color: rgba(255,255,255,0.8); font-size: 0.9rem; }
 
     /* === FOOTER === */
     .footer {
       text-align: center;
       margin-top: 20px;
       font-size: 0.75rem;
-      color: #334;
+      color: rgba(255,255,255,0.4);
     }
 
     .settings-badges {
@@ -412,8 +427,8 @@
       font-size: 0.7rem;
       padding: 3px 10px;
       border-radius: 12px;
-      background: rgba(255,255,255,0.05);
-      color: #667;
+      background: rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.85);
     }
 
     /* === MOBILE === */
@@ -429,6 +444,66 @@
   </style>
 </head>
 <body>
+
+  <!-- Bridge Background -->
+  <svg class="bridge-bg" viewBox="0 0 1400 300" preserveAspectRatio="xMidYMax meet" xmlns="http://www.w3.org/2000/svg">
+    <!-- Deck -->
+    <rect x="0" y="240" width="1400" height="14" rx="2" fill="#FB4F14"/>
+    <!-- Deck railing -->
+    <rect x="0" y="234" width="1400" height="3" fill="#FB4F14"/>
+
+    <!-- Left tower -->
+    <rect x="295" y="52" width="7" height="188" fill="#FB4F14"/>
+    <rect x="308" y="52" width="7" height="188" fill="#FB4F14"/>
+    <!-- Left tower cap -->
+    <rect x="290" y="44" width="30" height="12" rx="2" fill="#FB4F14"/>
+    <!-- Left tower cross-beams -->
+    <rect x="295" y="100" width="20" height="4" fill="#FB4F14"/>
+    <rect x="295" y="160" width="20" height="4" fill="#FB4F14"/>
+
+    <!-- Right tower -->
+    <rect x="1085" y="52" width="7" height="188" fill="#FB4F14"/>
+    <rect x="1098" y="52" width="7" height="188" fill="#FB4F14"/>
+    <!-- Right tower cap -->
+    <rect x="1080" y="44" width="30" height="12" rx="2" fill="#FB4F14"/>
+    <!-- Right tower cross-beams -->
+    <rect x="1085" y="100" width="20" height="4" fill="#FB4F14"/>
+    <rect x="1085" y="160" width="20" height="4" fill="#FB4F14"/>
+
+    <!-- Main cables -->
+    <path d="M 0,160 C 100,90 200,52 305,52" stroke="#FB4F14" stroke-width="4" fill="none"/>
+    <path d="M 305,52 C 450,52 600,232 700,232" stroke="#FB4F14" stroke-width="4" fill="none"/>
+    <path d="M 700,232 C 800,232 950,52 1095,52" stroke="#FB4F14" stroke-width="4" fill="none"/>
+    <path d="M 1095,52 C 1200,52 1300,90 1400,160" stroke="#FB4F14" stroke-width="4" fill="none"/>
+
+    <!-- Suspender cables - left span -->
+    <line x1="350" y1="99" x2="350" y2="234" stroke="#FB4F14" stroke-width="2"/>
+    <line x1="400" y1="135" x2="400" y2="234" stroke="#FB4F14" stroke-width="2"/>
+    <line x1="450" y1="166" x2="450" y2="234" stroke="#FB4F14" stroke-width="2"/>
+    <line x1="500" y1="191" x2="500" y2="234" stroke="#FB4F14" stroke-width="2"/>
+    <line x1="550" y1="210" x2="550" y2="234" stroke="#FB4F14" stroke-width="2"/>
+    <line x1="600" y1="224" x2="600" y2="234" stroke="#FB4F14" stroke-width="2"/>
+    <line x1="650" y1="231" x2="650" y2="234" stroke="#FB4F14" stroke-width="2"/>
+
+    <!-- Suspender cables - right span -->
+    <line x1="750" y1="231" x2="750" y2="234" stroke="#FB4F14" stroke-width="2"/>
+    <line x1="800" y1="224" x2="800" y2="234" stroke="#FB4F14" stroke-width="2"/>
+    <line x1="850" y1="210" x2="850" y2="234" stroke="#FB4F14" stroke-width="2"/>
+    <line x1="900" y1="191" x2="900" y2="234" stroke="#FB4F14" stroke-width="2"/>
+    <line x1="950" y1="166" x2="950" y2="234" stroke="#FB4F14" stroke-width="2"/>
+    <line x1="1000" y1="135" x2="1000" y2="234" stroke="#FB4F14" stroke-width="2"/>
+    <line x1="1050" y1="99" x2="1050" y2="234" stroke="#FB4F14" stroke-width="2"/>
+
+    <!-- Side suspenders - left anchorage -->
+    <line x1="150" y1="110" x2="150" y2="234" stroke="#FB4F14" stroke-width="2"/>
+    <line x1="200" y1="85" x2="200" y2="234" stroke="#FB4F14" stroke-width="2"/>
+    <line x1="250" y1="66" x2="250" y2="234" stroke="#FB4F14" stroke-width="2"/>
+
+    <!-- Side suspenders - right anchorage -->
+    <line x1="1150" y1="66" x2="1150" y2="234" stroke="#FB4F14" stroke-width="2"/>
+    <line x1="1200" y1="85" x2="1200" y2="234" stroke="#FB4F14" stroke-width="2"/>
+    <line x1="1250" y1="110" x2="1250" y2="234" stroke="#FB4F14" stroke-width="2"/>
+  </svg>
 
   <!-- Loading Overlay -->
   <div class="loading-overlay" id="loadingOverlay">
@@ -485,7 +560,7 @@
   <!-- Main App -->
   <div class="container" id="mainApp" style="display:none;">
     <header>
-      <h1>Dynasty Trade Analyzer</h1>
+      <h1>BRIDGE CALC</h1>
       <button class="gear-btn" onclick="showSettings()">&#9881; Settings</button>
     </header>
 
@@ -531,11 +606,6 @@
       </div>
     </div>
 
-    <!-- Controls -->
-    <div class="controls">
-      <button class="control-btn" onclick="swapSides()">&#8644; Swap</button>
-      <button class="control-btn" onclick="clearTrade()">&#10005; Clear</button>
-    </div>
 
     <!-- Results -->
     <div class="results-panel" id="resultsPanel">
@@ -962,8 +1032,9 @@
     }
 
     function getEliteMultiplier(overallRank) {
-      if (overallRank <= 10) return 1.25;
-      if (overallRank <= 25) return 1.10;
+      if (overallRank <= 5) return 1.15;
+      if (overallRank <= 10) return 1.10;
+      if (overallRank <= 20) return 1.05;
       if (overallRank <= 50) return 1.00;
       return 0.90;
     }
@@ -1167,14 +1238,6 @@
         `;
       }
 
-      // Rate info
-      let rateHtml = `
-        <div class="results-suggestion" style="margin-top:8px; border-top:none; padding-top:8px;">
-          Consolidation rate: ${(result.effectiveRate * 100).toFixed(1)}%
-          ${result.eliteMultiplierActive ? ` (base ${(result.baseRate * 100).toFixed(1)}% × ${result.eliteMultiplierValue}x elite multiplier)` : ''}
-        </div>
-      `;
-
       // Balancing suggestion
       let suggestionHtml = '';
       if (result.winner && result.diffPercent > 5) {
@@ -1184,7 +1247,7 @@
         if (balancer) {
           suggestionHtml = `
             <div class="results-suggestion">
-              To make this fair, <strong>Side ${losingSide}</strong> should add <strong>${balancer.name}</strong> (${balancer.value.toLocaleString()})
+              Let's BRIDGE the gap. <strong>Side ${losingSide}</strong> should add <strong>${balancer.name}</strong> (${balancer.value.toLocaleString()})
             </div>
           `;
         } else {
@@ -1194,7 +1257,7 @@
         }
       }
 
-      contentEl.innerHTML = verdictHtml + rateHtml + suggestionHtml;
+      contentEl.innerHTML = verdictHtml + suggestionHtml;
     }
 
     function updateFooter() {
@@ -1219,6 +1282,16 @@
         input.addEventListener('focus', () => {
           if (input.value.length >= 2) {
             showSearchResults(side, input.value);
+          }
+        });
+
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            const results = searchAssets(input.value);
+            const firstAvailable = results.find(r => !r.inTrade);
+            if (firstAvailable) {
+              addAsset(side, firstAvailable.id);
+            }
           }
         });
 
