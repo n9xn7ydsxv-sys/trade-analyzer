@@ -764,10 +764,11 @@
         // FantasyCalc values already have TEP baked in from their user base,
         // so we discount TEs in non/partial TEP leagues rather than boosting in full TEP
         if (entry.player.position === 'TE') {
+          const isEliteTE = entry.positionRank <= 3;
           if (settings.tep === 0) {
-            value = Math.round(value * 0.85);   // 15% discount for non-TEP
+            value = Math.round(value * (isEliteTE ? 0.925 : 0.85));   // 7.5% or 15% discount
           } else if (settings.tep === 0.5) {
-            value = Math.round(value * 0.925);  // 7.5% discount for 0.5 TEP
+            value = Math.round(value * (isEliteTE ? 0.9625 : 0.925)); // 3.75% or 7.5% discount
           }
           // TEP 1.0: no adjustment (baseline already reflects ~TEP value)
         }
@@ -784,8 +785,6 @@
       }
 
       // Process picks
-      const currentYearThirdRound = {}; // Group 3.xx picks for early/mid/late
-
       for (const entry of picks) {
         const name = entry.player.name;
         const value = entry.value;
@@ -803,8 +802,8 @@
 
           if (year !== currentPickYear) continue; // Only process current year individual picks
 
-          if (round <= 2) {
-            // Rounds 1-2: individual picks
+          if (round <= 3) {
+            // Rounds 1-3: individual picks
             const pickName = `${year} ${round}.${String(slot).padStart(2, '0')}`;
             allAssets.push({
               id: `pick-${pickName}`,
@@ -815,10 +814,6 @@
               overallRank: rank,
               searchText: normalize(pickName + ' pick')
             });
-          } else if (round === 3) {
-            // Round 3: collect for grouping
-            if (!currentYearThirdRound[slot]) currentYearThirdRound[slot] = { value: 0, rank: 0 };
-            currentYearThirdRound[slot] = { value, rank };
           }
           // Round 4+: skip
 
@@ -871,52 +866,25 @@
         }
       }
 
-      // Process current year 3rd round early/mid/late
-      const thirdSlots = Object.keys(currentYearThirdRound).map(Number).sort((a, b) => a - b);
-      if (thirdSlots.length > 0) {
-        const earlySlots = thirdSlots.filter(s => s <= 4);
-        const midSlots = thirdSlots.filter(s => s >= 5 && s <= 8);
-        const lateSlots = thirdSlots.filter(s => s >= 9);
-
-        const avg = (slots) => {
-          if (slots.length === 0) return 0;
-          return Math.round(slots.reduce((sum, s) => sum + currentYearThirdRound[s].value, 0) / slots.length);
-        };
-        const avgRank = (slots) => {
-          if (slots.length === 0) return 999;
-          return Math.round(slots.reduce((sum, s) => sum + currentYearThirdRound[s].rank, 0) / slots.length);
-        };
-
-        const year = currentPickYear;
-        if (earlySlots.length > 0) {
-          allAssets.push({
-            id: `pick-${year} Early 3rd`,
-            name: `${year} Early 3rd`,
-            position: 'PICK', team: '',
-            value: avg(earlySlots),
-            overallRank: avgRank(earlySlots),
-            searchText: normalize(`${year} early 3rd pick`)
-          });
+      // Apply below-the-line discount
+      // Find the current year 2.07 pick's overall rank as the quality line
+      const currentYear = getCurrentPickYear();
+      let lineRank = null;
+      for (const entry of data) {
+        if (entry.player.name === `${currentYear} Pick 2.07`) {
+          lineRank = entry.overallRank;
+          break;
         }
-        if (midSlots.length > 0) {
-          allAssets.push({
-            id: `pick-${year} Mid 3rd`,
-            name: `${year} Mid 3rd`,
-            position: 'PICK', team: '',
-            value: avg(midSlots),
-            overallRank: avgRank(midSlots),
-            searchText: normalize(`${year} mid 3rd pick`)
-          });
-        }
-        if (lateSlots.length > 0) {
-          allAssets.push({
-            id: `pick-${year} Late 3rd`,
-            name: `${year} Late 3rd`,
-            position: 'PICK', team: '',
-            value: avg(lateSlots),
-            overallRank: avgRank(lateSlots),
-            searchText: normalize(`${year} late 3rd pick`)
-          });
+      }
+
+      if (lineRank !== null) {
+        const belowLineRate = getBelowLineRate();
+        for (const asset of allAssets) {
+          if (asset.overallRank > lineRank) {
+            const spotsBelow = asset.overallRank - lineRank;
+            const discount = Math.min(spotsBelow * belowLineRate, 0.75);
+            asset.value = Math.round(asset.value * (1 - discount));
+          }
         }
       }
 
@@ -943,18 +911,20 @@
       return str.toLowerCase().replace(/['''.-]/g, '').replace(/\s+/g, ' ').trim();
     }
 
-    function searchAssets(query) {
+    function searchAssets(query, side) {
       if (!query || query.length < 2) return [];
 
       const normalizedQuery = normalize(query);
-      const usedIds = new Set([...sideA, ...sideB].map(a => a.id));
+      // Only block assets that are on the OTHER side
+      const otherSide = side === 'A' ? sideB : sideA;
+      const otherIds = new Set(otherSide.map(a => a.id));
 
       const results = [];
       for (const asset of allAssets) {
         if (asset.searchText.includes(normalizedQuery)) {
           results.push({
             ...asset,
-            inTrade: usedIds.has(asset.id)
+            inTrade: otherIds.has(asset.id)
           });
           if (results.length >= 8) break;
         }
@@ -965,7 +935,7 @@
 
     function showSearchResults(side, query) {
       const resultsEl = document.getElementById(`results${side}`);
-      const results = searchAssets(query);
+      const results = searchAssets(query, side);
 
       if (results.length === 0) {
         resultsEl.classList.remove('visible');
@@ -1029,17 +999,19 @@
     // ============================================================
     // TRADE CALCULATION
     // ============================================================
+    function getBelowLineRate() {
+      // 0.35% per spot for 12 starters, ×1.33 for each fewer starter
+      let rate = 0.0035;
+      const steps = 12 - settings.starters;
+      for (let i = 0; i < steps; i++) {
+        rate *= 1.33;
+      }
+      return rate;
+    }
+
     function getConsolidationRate() {
       const S = 12 * settings.starters;
       return 0.45 * Math.exp(-0.03 * (S - 80)) + 0.14;
-    }
-
-    function getEliteMultiplier(overallRank) {
-      if (overallRank <= 5) return 1.15;
-      if (overallRank <= 10) return 1.10;
-      if (overallRank <= 20) return 1.05;
-      if (overallRank <= 50) return 1.00;
-      return 0.90;
     }
 
     function calculateTrade() {
@@ -1049,34 +1021,17 @@
       const sortedA = [...sideA].sort((a, b) => b.value - a.value);
       const sortedB = [...sideB].sort((a, b) => b.value - a.value);
 
-      const baseRate = getConsolidationRate();
-
-      // Determine effective rate (with elite multiplier)
-      let effectiveRate = baseRate;
-      let eliteMultiplierActive = false;
-      let eliteMultiplierValue = 1.0;
-      if (sortedA.length !== sortedB.length) {
-        const fewerSide = sortedA.length < sortedB.length ? sortedA : sortedB;
-        if (fewerSide.length > 0) {
-          eliteMultiplierValue = getEliteMultiplier(fewerSide[0].overallRank);
-          if (eliteMultiplierValue !== 1.0) {
-            eliteMultiplierActive = true;
-          }
-          effectiveRate = baseRate * eliteMultiplierValue;
-          // Cap the effective rate at 95% to prevent extreme values
-          effectiveRate = Math.min(effectiveRate, 0.95);
-        }
-      }
+      const rate = getConsolidationRate();
 
       // Apply compounding discount to both sides
       const adjA = sortedA.map((asset, i) => ({
         ...asset,
-        adjustedValue: Math.round(asset.value * Math.pow(1 - effectiveRate, i))
+        adjustedValue: Math.round(asset.value * Math.pow(1 - rate, i))
       }));
 
       const adjB = sortedB.map((asset, i) => ({
         ...asset,
-        adjustedValue: Math.round(asset.value * Math.pow(1 - effectiveRate, i))
+        adjustedValue: Math.round(asset.value * Math.pow(1 - rate, i))
       }));
 
       const rawA = sortedA.reduce((sum, a) => sum + a.value, 0);
@@ -1120,23 +1075,28 @@
         diff, diffPercent,
         winner,
         fairnessLabel, fairnessClass,
-        consAdjA, consAdjB,
-        effectiveRate, baseRate,
-        eliteMultiplierActive, eliteMultiplierValue
+        consAdjA, consAdjB
       };
     }
 
-    function findBalancingAsset(gap) {
-      // Find the asset whose value is closest to the gap
+    function findBalancingAsset(gap, losingSide) {
+      // The balancing asset would be added as the next piece on the losing side,
+      // so it gets hit with the consolidation discount at that position.
+      const currentPieces = losingSide === 'A' ? sideA : sideB;
+      const nextPosition = currentPieces.length; // 0-indexed, so this is the next slot
+      const rate = getConsolidationRate();
+      const discountFactor = Math.pow(1 - rate, nextPosition);
+
+      const usedIds = new Set([...sideA, ...sideB].map(a => a.id));
       let best = null;
       let bestDiff = Infinity;
 
       for (const asset of allAssets) {
-        // Skip assets already in the trade
-        const usedIds = new Set([...sideA, ...sideB].map(a => a.id));
         if (usedIds.has(asset.id)) continue;
 
-        const d = Math.abs(asset.value - gap);
+        // What this asset would actually contribute after consolidation discount
+        const discountedValue = asset.value * discountFactor;
+        const d = Math.abs(discountedValue - gap);
         if (d < bestDiff) {
           bestDiff = d;
           best = asset;
@@ -1245,7 +1205,7 @@
       let suggestionHtml = '';
       if (result.winner && result.diffPercent > 5) {
         const losingSide = result.winner === 'A' ? 'B' : 'A';
-        const balancer = findBalancingAsset(result.diff);
+        const balancer = findBalancingAsset(result.diff, losingSide);
 
         if (balancer) {
           suggestionHtml = `
@@ -1290,7 +1250,7 @@
 
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') {
-            const results = searchAssets(input.value);
+            const results = searchAssets(input.value, side);
             const firstAvailable = results.find(r => !r.inTrade);
             if (firstAvailable) {
               addAsset(side, firstAvailable.id);
