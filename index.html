@@ -914,14 +914,24 @@
     function searchAssets(query, side) {
       if (!query || query.length < 2) return [];
 
-      const normalizedQuery = normalize(query);
       // Only block assets that are on the OTHER side
       const otherSide = side === 'A' ? sideB : sideA;
       const otherIds = new Set(otherSide.map(a => a.id));
 
+      // If query looks like a pick pattern (e.g. "2.0", "1.1", "3."),
+      // match against raw pick names to avoid "2.0" matching "2026"
+      const isPickQuery = /^\d+\./.test(query);
+
       const results = [];
       for (const asset of allAssets) {
-        if (asset.searchText.includes(normalizedQuery)) {
+        let matches;
+        if (isPickQuery) {
+          matches = asset.name.toLowerCase().includes(query.toLowerCase());
+        } else {
+          matches = asset.searchText.includes(normalize(query));
+        }
+
+        if (matches) {
           results.push({
             ...asset,
             inTrade: otherIds.has(asset.id)
